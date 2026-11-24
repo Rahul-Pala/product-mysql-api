@@ -1,8 +1,12 @@
 const db = require("../db");
 
 //GET - getAllproducts
-const getAllProducts = async () => {
-  const [rows] = await db.query("SELECT * FROM products");
+const getAllProducts = async (limit = 10, offset = 0) => {
+  const [rows] = await db.execute(
+    "SELECT * FROM products ORDER BY id LIMIT ? OFFSET ?",
+    [limit, offset]
+  );
+
   return rows;
 };
 
@@ -16,7 +20,7 @@ const createProduct = async (name, price, stock) => {
   return result.insertId;
 };
 
-
+//PUT - updateProduct
 const updateProduct = async (id, name, price, stock) => {
   const [result] = await db.execute(
     "UPDATE products SET name = ?, price = ?, stock = ? WHERE id = ?",
@@ -26,7 +30,7 @@ const updateProduct = async (id, name, price, stock) => {
   return result.affectedRows;
 };
 
-
+//DELETE - deleteProduct
 const deleteProduct = async (id) => {
   const [result] = await db.execute(
     "DELETE FROM products WHERE id = ?",
@@ -35,8 +39,5 @@ const deleteProduct = async (id) => {
 
   return result.affectedRows;
 };
-
-
-
 
 module.exports = { getAllProducts, createProduct, updateProduct,deleteProduct};

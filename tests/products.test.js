@@ -1,5 +1,19 @@
-
 const request = require("supertest");
+
+
+jest.mock("../middleware/authMiddleware", () => {
+  return (req, res, next) => {
+    req.userId = 1;
+    next();
+  };
+});
+
+jest.mock("../middleware/roleMiddleware", () => {
+  return () => (req, res, next) => {
+    next();
+  };
+});
+
 
 // Replace the real MySQL model with fake functions
 jest.mock("../models/productModel", () => ({
@@ -176,3 +190,51 @@ describe("DELETE /products/:id - Not Found", () => {
 
   });
 });
+
+
+describe("POST /products - Validation", () => {
+
+  test("should reject an empty product name", async () => {
+    const response = await request(app)
+      .post("/products")
+      .send({
+        name: "   ",
+        price: 500,
+        stock: 10
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Enter a valid product name");
+    expect(productModel.createProduct).not.toHaveBeenCalled();
+  });
+
+  test("should reject a negative price", async () => {
+    const response = await request(app)
+      .post("/products")
+      .send({
+        name: "Laptop",
+        price: -500,
+        stock: 10
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Enter a valid product price");
+    expect(productModel.createProduct).not.toHaveBeenCalled();
+  });
+
+  test("should reject decimal stock", async () => {
+    const response = await request(app)
+      .post("/products")
+      .send({
+        name: "Laptop",
+        price: 500,
+        stock: 10.5
+      });
+
+    expect(response.status).toBe(400);
+    expect(response.body.message).toBe("Enter a valid product stock");
+    expect(productModel.createProduct).not.toHaveBeenCalled();
+  });
+
+});
+

@@ -1,11 +1,100 @@
-
 const productModel = require("../models/productModel");
 
 const getProducts = async (req, res) => {
   try {
-    const products = await productModel.getAllProducts();
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 10);
+    const search = req.query.search ?? "";
+
+    const sortBy = req.query.sortBy ?? "id";
+    const order = req.query.order ?? "asc";
+
+    const categoryId = req.query.categoryId !== undefined
+  ? Number(req.query.categoryId)
+  : null;
+
+    const allowedSortFields = ["id", "name", "price", "stock"];
+    const allowedOrders = ["asc", "desc"];
+
+if (
+  !allowedSortFields.includes(sortBy) ||
+  !allowedOrders.includes(order)
+) {
+  return res.status(400).json({
+    message: "Invalid sorting options"
+  });
+}
+
+    const minPrice = req.query.minPrice !== undefined
+  ? Number(req.query.minPrice)
+  : null;
+
+     const maxPrice = req.query.maxPrice !== undefined
+  ? Number(req.query.maxPrice)
+  : null;
+
+  if (
+  (minPrice !== null &&
+    (!Number.isFinite(minPrice) || minPrice < 0)) ||
+  (maxPrice !== null &&
+    (!Number.isFinite(maxPrice) || maxPrice < 0)) ||
+  (minPrice !== null && maxPrice !== null &&
+    minPrice > maxPrice)
+) {
+  return res.status(400).json({
+    message: "Invalid price range"
+  });
+}
+
+     if (typeof search !== "string" || search.length > 100) {
+  return res.status(400).json({
+    message: "Invalid search value"
+  });
+}
+
+    if (
+      !Number.isSafeInteger(page) ||
+      !Number.isSafeInteger(limit) ||
+      page < 1 ||
+      limit < 1 ||
+      limit > 100
+    ) {
+      return res.status(400).json({
+        message: "Invalid page or limit"
+      });
+    }
+
+    const offset = (page - 1) * limit;
+
+    if (!Number.isSafeInteger(offset)) {
+      return res.status(400).json({
+        message: "Invalid offset"
+      });
+    }
+
+    if (
+  categoryId !== null &&
+  (!Number.isSafeInteger(categoryId) || categoryId <= 0)
+) {
+  return res.status(400).json({
+    message: "Invalid category ID"
+  });
+}
+
+    const products = await productModel.getAllProducts(
+  limit,
+  offset,
+  search.trim(),
+  minPrice,
+  maxPrice,
+  sortBy,
+  order,
+  categoryId
+);
 
     res.json(products);
+  
+
   } catch (error) {
     console.error("Error fetching products:", error.message);
 
@@ -120,14 +209,3 @@ const removeProduct = async (req, res) => {
 module.exports = {
   getProducts, addProduct, editProduct, removeProduct
 };
-
-// curl -X POST http://localhost:3000/auth/login \
-//   -H "Content-Type: application/json" \
-//   -d '{"email":"test@example.com","password":"Hello123!"}'
-
-
-
-  // curl -i -X POST http://localhost:3000/products \
-  // -H "Content-Type: application/json" \
-  // -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc5NTMyMDg3MywiZXhwIjoxNzk1MzI0NDczfQ.6Zb_Fu-T3ClnkX2VL4mNd88MKiVF5zsq2Y2iraxsFX8" \
-  // -d '{"name":"Table","price":700,"stock":190}'

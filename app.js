@@ -1,5 +1,11 @@
 const express = require("express");
+const cors = require("cors");
 const helmet = require("helmet");
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
+
+const { globalLimiter } = require("./middleware/rateLimitMiddleware");
+
 const productRoutes = require("./routes/productRoutes");
 const authRoutes = require("./routes/authRoutes");
 const orderRoutes = require("./routes/orderRoutes");
@@ -7,27 +13,50 @@ const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
 
-app.use(helmet());
-app.use(express.json());
+const isProduction = process.env.NODE_ENV === "production";
 
-// Product routes
+// Security middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            "upgrade-insecure-requests": isProduction ? [] : null
+        }
+    }
+}));
+
+app.use(cors({
+    origin: process.env.FRONTEND_URL || false
+}));
+
+app.use(globalLimiter);
+
+app.use(express.json({
+    limit: "10kb"
+}));
+
+// Swagger documentation
+if (!isProduction) {
+    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+}
+
+// Home route
+app.get("/", (req, res) => {
+    res.send("My Express + MySQL API is working!");
+});
+
+// API routes
 app.use("/products", productRoutes);
-
-// Authentication routes
 app.use("/auth", authRoutes);
-
 app.use("/orders", orderRoutes);
 
-// Temporary route to test error handling
-app.get("/test-error", (req, res, next) => {
-  const error = new Error("Testing error middleware");
-  next(error);
+// Handle unknown routes
+app.use((req, res) => {
+    res.status(404).json({
+        message: "Route not found"
+    });
 });
-// Handle errors from the routes above
-app.use(errorMiddleware);
 
-app.get("/", (req, res) => {
-  res.send("My Express + MySQL API is working!");
-});
+// Centralised error handling
+app.use(errorMiddleware);
 
 module.exports = app;

@@ -1,6 +1,6 @@
 const db = require("../db");
 
-const createOrder = async (productId, quantity) => {
+const createOrder = async (productId, quantity, userId) => {
 
   const connection = await db.getConnection();
 
@@ -24,12 +24,11 @@ const createOrder = async (productId, quantity) => {
     }
 
     const [result] = await connection.execute(
-      `INSERT INTO orders (product_id, quantity, total_price)
-       SELECT id, ?, price * ?
-       FROM products WHERE id = ?`,
-      [quantity, quantity, productId]
-    );
-
+    `INSERT INTO orders (product_id, quantity, total_price, user_id)
+     SELECT id, ?, price * ?, ?
+     FROM products WHERE id = ?`,
+    [quantity, quantity, userId, productId]
+);
     await connection.execute(
       "UPDATE products SET stock = stock - ? WHERE id = ?",
       [quantity, productId]

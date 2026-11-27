@@ -17,10 +17,13 @@ const addOrder = async (req, res) => {
       });
     }
 
+    const userId = req.userId;
+
     const orderId = await orderModel.createOrder(
-      productId,
-      quantity
-    );
+    productId,
+    quantity,
+    userId
+);
 
     res.status(201).json({
       message: "Order created successfully",
